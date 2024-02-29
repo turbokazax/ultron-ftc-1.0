@@ -2,3 +2,8 @@
 #Subscribe to our instagrams: @arnijuba, @nyxpardus, @ftc_yaku
 
 ##Navigate to the TeamCode -> Java -> org.firstinspires.ftc.teamcode folder to see all the stuff for programming.
+
+## Authors
+
+- [@turbokazax](https://www.github.com/turbokazax)
+
