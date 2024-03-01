@@ -6,15 +6,21 @@ import com.arcrobotics.ftclib.hardware.motors.Motor;
 import com.arcrobotics.ftclib.hardware.motors.MotorGroup;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 
+import org.checkerframework.checker.nullness.qual.Raw;
+
 
 public class TeleOpMain extends OpMode {
 
     /*
-     * Here i'm using the FTCLib's motors, servos, etc. They're very easy to handle than the default ones
+     * Here i'm using the FTCLib's motors, servos, etc. instead of the default ones.
+     * They're very easy to handle than the default ones
      * and FTCLib overall is the best library for teleOp programming (honestly)
      * if you wanna read more about it -> https://docs.ftclib.org/ftclib/   (ctrl+left click to open the link)
      *
      * if you need consultation for anything from this code text me in dm.
+     * PLEASE read this code upside-down VERY carefully because I tried to include every possible
+     * useful piece of information and thoroughly explain it.
+     *
      * Btw, these gray lines of text you see in android studio are comments, they won't affect your code.
      */
 
@@ -38,8 +44,11 @@ public class TeleOpMain extends OpMode {
     /*
      * Here, put the number of the ratio you use on your drivebase motors (for example:
      * if you have gears with ratios 3:1, 5:1, the total ratio would be 15:1, just add the numbers up)
+     *
+     * All "final" variables are so because there is no need to change them further in the code.
+     * It prevents any possible change of this variable by crashing the program if you try to do so.
      */
-    private final int DRIVE_MOTOR_RATIO = 4; //(4:1)
+    private final int DRIVE_MOTOR_RATIO = 4; //(4:1 CHANGE IT IF IT'S DIFFERENT)
 
     /*
      * Ticks Count Per Rev (CPR). What tick is? When the inner part of the motor (that is hidden by casing) rotates,
@@ -51,6 +60,10 @@ public class TeleOpMain extends OpMode {
      * Encoder position is the current number of ticks the motor has rotated. If motor rotates forward (or backwards, if motor was
      * intentionally inverted (it means that the default direction would be backward rotation, not forward),
      * encoder position increases and vice versa.
+     *
+     * Essentially, it describes how many revolutions will motor make and in what direction
+     * (e.g +(28*4) ticks will mean one complete revolution for a motor with gear ratio 4:1, -(28*4)
+     * will be one complete BACKWARD revolution)
      * ***************
      */
     private final int DRIVE_MOTOR_CPR = 28 * DRIVE_MOTOR_RATIO;
@@ -63,7 +76,11 @@ public class TeleOpMain extends OpMode {
      */
     private final int DRIVE_MOTOR_RPM = 6000 / DRIVE_MOTOR_RATIO;
 
-    private Motor armMotor;
+    /*
+    Motors that are used to rotate the arm:
+     */
+    private Motor armMotorLeft;
+    private Motor armMotorRight;
 
 
     //
@@ -80,6 +97,25 @@ public class TeleOpMain extends OpMode {
      */
     private GamepadEx scorerOp;
 
+    /*
+    These are 2 encoder positions for our arm to rotate to.
+    The former is the position when arm is low near the ground (and we assume it's our starting position)
+    The latter is the position of arm when we score the pixels on the backdrop.
+
+    IMPORTANT:
+    How to get these positions?
+    The only way to do it without any excessive math is to do it empirically.
+    Launch the ArmPositionTestOpMode and look on the values on your driver hub;
+    Now, from the ground position (PLEASE MAKE SURE THAT THIS GROUND POSITION IS THE LOWEST YOU CAN ACHIEVE
+    TO MAKE SURE NO UNCERTAINTIES WILL TAKE PLACE) rotate the arm to the desired position
+    in which the pixels will be scored (I assume here that you have a backdrop (e.g AndyMark's Centerstage Backdrop))
+    (if not, just make sure the angle between the arm and horizontal is approximately 60 degrees).
+
+    Now, remember this position and put it in the ARM_POSITION_SCORE variable.
+     */
+    private final double ARM_POSITION_LOW = 0;
+    private final double ARM_POSITION_SCORE = 0;
+
     @Override
     public void init() {
         //here i initialize the driverOp gamepad assuming that the driver will use the first gamepad.
@@ -95,29 +131,51 @@ public class TeleOpMain extends OpMode {
          */
         leftMotor = new Motor(hardwareMap, "leftMotor", DRIVE_MOTOR_CPR, DRIVE_MOTOR_RPM);
         rightMotor = new Motor(hardwareMap, "rightMotor", DRIVE_MOTOR_CPR, DRIVE_MOTOR_RPM);
-
+        //Here, CPR and RPM were taken from the official REV site, no need to worry about these numbers:
+        armMotorLeft = new Motor(hardwareMap, "armMotorLeft", 288, 125);
+        armMotorRight = new Motor(hardwareMap, "armMotorRight", 288, 125);
+        MotorGroup armMotors = new MotorGroup(armMotorLeft, armMotorRight);
+        armMotors.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
+        /*
+        Raw power means no internal controller does any work and the power supplied we will
+        calculate ourselves further in the code, depending on the desired position.
+         */
+        armMotors.setRunMode(Motor.RunMode.RawPower);
 
         /*
         because the default motor rotation (on the left side) is forward, the default rotation direction on the right side is backwards.
         to account for that we invert the right motor so it's default rotation direction would be forward.
          */
         rightMotor.setInverted(true);
+        armMotorRight.setInverted(true);
 
 
         // here i simply group two motors into one MotorGroup (from FTCLib) so i could handle them both at once in following two methods:
         MotorGroup driveMotors = new MotorGroup(leftMotor, rightMotor);
         /*
-        Velocity control run mode is where the speed of rotation of motors is handled by the inner motor contoller.
+        Velocity control run mode is where the speed of rotation of motors is handled by the inner motor controller.
         As you use drive encoders, this would make the programming process MUCH easier because you would not need to account for any
         wacky things with motors' speeds' you could've encountered if you didn't use them
          */
         driveMotors.setRunMode(Motor.RunMode.VelocityControl);
         /*
-        This simply tells our motors to hold the robot on one place if zero power is supplied to them. This helps to prevent
+        This simply tells our motors to hold the robot on one place
+        (i.e "brake" by giving negative power when any positive power is forcefully given)
+        if zero power is supplied to them. This helps to prevent
         unnecessary drift that could happen if motors are given zero power while robot was moving
         and it drove a small distance before completely stopping.
          */
         driveMotors.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
+
+
+        /*
+        Initializing our drivebase with two motors we have:
+         */
+        drive = new DifferentialDrive(leftMotor, rightMotor);
+        /*
+        I did it because we have already inverted the right motor, so no need to invert it again:
+         */
+        drive.setRightSideInverted(false);
     }
 
 
@@ -130,7 +188,7 @@ public class TeleOpMain extends OpMode {
         here we get the inputs from our gamepads. Basically how gamepad's sticks work is that the amount of VERTICAL (that's why it's Y)
         displacement of the stick from center defines the current value driverOp.getLeftY().
 
-        Put simply: the further you push the stick upwards or downwards, the faster the left or right motor will rotate.
+        Put simply: the further you push the stick upwards or downwards, the faster the left or right side will drive.
          */
 
         //this one controls the left side (left motor):
@@ -147,7 +205,7 @@ public class TeleOpMain extends OpMode {
     }
 
     private void updateArm() {
-        //TODO: finish the arm code
+
     }
 
 
