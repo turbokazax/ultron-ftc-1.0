@@ -6,6 +6,7 @@ import com.arcrobotics.ftclib.controller.PIDController;
 import com.arcrobotics.ftclib.drivebase.DifferentialDrive;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
+import com.arcrobotics.ftclib.hardware.ServoEx;
 import com.arcrobotics.ftclib.hardware.motors.Motor;
 import com.arcrobotics.ftclib.hardware.motors.MotorGroup;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
@@ -123,6 +124,11 @@ public class TeleOpMain extends OpMode {
     private static double ticks_in_degree = 288 / 360.0;
 
     private boolean isArmSetToScoringPosition = false;
+
+    //Claw servos:
+
+    private ServoEx leftServo;
+    private ServoEx rightServo;
 
     @Override
     public void init() {
@@ -249,6 +255,9 @@ public class TeleOpMain extends OpMode {
         armMotorRight.set(rightPower);
     }
 
+    private void updateClaw(){
+
+    }
 
     @Override
     public void loop() {
@@ -269,5 +278,7 @@ public class TeleOpMain extends OpMode {
         updateDrive();
         //handling the arm:
         updateArm();
+        //handling the claw:
+        updateClaw();
     }
 }
