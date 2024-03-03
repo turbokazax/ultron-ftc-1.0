@@ -256,7 +256,7 @@ public class TeleOpMain extends OpMode {
     }
 
     private void updateClaw(){
-
+        //TODO: finish this part
     }
 
     @Override
