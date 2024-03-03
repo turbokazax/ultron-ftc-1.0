@@ -1,5 +1,8 @@
 package org.firstinspires.ftc.teamcode.teleop;
 
+import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
+import com.arcrobotics.ftclib.controller.PIDController;
 import com.arcrobotics.ftclib.drivebase.DifferentialDrive;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.arcrobotics.ftclib.hardware.motors.Motor;
@@ -116,8 +119,17 @@ public class TeleOpMain extends OpMode {
     private final double ARM_POSITION_LOW = 0;
     private final double ARM_POSITION_SCORE = 0;
 
+
+    private PIDController armPID;
+    public static double armP = 0, armI = 0, armD = 0;
+    public static double armF = 0;
+
+    private static double ticks_in_degree = 288/360.0;
+
+
     @Override
     public void init() {
+        telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
         //here i initialize the driverOp gamepad assuming that the driver will use the first gamepad.
         driverOp = new GamepadEx(gamepad1);
         //uncomment (remove the backslashes) the next line if you have the second driver (scorer):
