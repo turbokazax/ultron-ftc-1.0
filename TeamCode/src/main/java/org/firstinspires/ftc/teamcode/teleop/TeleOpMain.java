@@ -5,11 +5,10 @@ import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.arcrobotics.ftclib.controller.PIDController;
 import com.arcrobotics.ftclib.drivebase.DifferentialDrive;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
+import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 import com.arcrobotics.ftclib.hardware.motors.Motor;
 import com.arcrobotics.ftclib.hardware.motors.MotorGroup;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
-
-import org.checkerframework.checker.nullness.qual.Raw;
 
 
 public class TeleOpMain extends OpMode {
@@ -107,33 +106,31 @@ public class TeleOpMain extends OpMode {
 
     IMPORTANT:
     How to get these positions?
-    The only way to do it without any excessive math is to do it empirically.
-    Launch the ArmPositionTestOpMode and look on the values on your driver hub;
-    Now, from the ground position (PLEASE MAKE SURE THAT THIS GROUND POSITION IS THE LOWEST YOU CAN ACHIEVE
-    TO MAKE SURE NO UNCERTAINTIES WILL TAKE PLACE) rotate the arm to the desired position
-    in which the pixels will be scored (I assume here that you have a backdrop (e.g AndyMark's Centerstage Backdrop))
-    (if not, just make sure the angle between the arm and horizontal is approximately 60 degrees).
 
-    Now, remember this position and put it in the ARM_POSITION_SCORE variable.
+    goto ArmPositionTestOpMode for explanation
      */
-    private final double ARM_POSITION_LOW = 0;
-    private final double ARM_POSITION_SCORE = 0;
+    private final int ARM_POSITION_LOW = 0;
+    private final int ARM_POSITION_SCORE = 0;
 
+    private int ARM_TARGET = 0;
 
-    private PIDController armPID;
+    //goto ArmPIDFTestOpMode for explanation on these things:
+    private PIDController armPIDLeft;
+    private PIDController armPIDRight;
     public static double armP = 0, armI = 0, armD = 0;
     public static double armF = 0;
 
-    private static double ticks_in_degree = 288/360.0;
+    private static double ticks_in_degree = 288 / 360.0;
 
+    private boolean isArmSetToScoringPosition = false;
 
     @Override
     public void init() {
         telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
         //here i initialize the driverOp gamepad assuming that the driver will use the first gamepad.
         driverOp = new GamepadEx(gamepad1);
-        //uncomment (remove the backslashes) the next line if you have the second driver (scorer):
-//        scorerOp = new GamepadEx(gamepad2)
+        //comment (add the backslashes in the beginning of) the next line if you have the second driver (scorer):
+        scorerOp = new GamepadEx(gamepad2);
 
 
         /*
@@ -188,6 +185,13 @@ public class TeleOpMain extends OpMode {
         I did it because we have already inverted the right motor, so no need to invert it again:
          */
         drive.setRightSideInverted(false);
+
+        armPIDLeft = new PIDController(armP, armI, armD);
+        armPIDRight = new PIDController(armP, armI, armD);
+
+        armPIDLeft.setPID(armP, armI, armD);
+        armPIDRight.setPID(armP, armI, armD);
+
     }
 
 
@@ -217,7 +221,32 @@ public class TeleOpMain extends OpMode {
     }
 
     private void updateArm() {
+        int leftPos = armMotorLeft.getCurrentPosition();
+        int rightPos = armMotorRight.getCurrentPosition();
 
+        if (leftPos <= 0) armMotorLeft.resetEncoder();
+        if (rightPos <= 0) armMotorRight.resetEncoder();
+
+        //TODO: write comments on this part
+        if (scorerOp.wasJustPressed(GamepadKeys.Button.Y)) {
+            isArmSetToScoringPosition = !isArmSetToScoringPosition;
+        }
+
+        double ff;
+        double leftPower;
+        double rightPower;
+        if (isArmSetToScoringPosition) {
+            ARM_TARGET = ARM_POSITION_SCORE;
+
+        } else {
+            ARM_TARGET = ARM_POSITION_LOW;
+        }
+
+        ff = Math.cos(Math.toRadians(ARM_TARGET / ticks_in_degree)) * armF;
+        leftPower = armPIDLeft.calculate(leftPos, ARM_TARGET) + ff;
+        rightPower = armPIDRight.calculate(rightPos, ARM_TARGET) + ff;
+        armMotorLeft.set(leftPower);
+        armMotorRight.set(rightPower);
     }
 
 
@@ -234,8 +263,11 @@ public class TeleOpMain extends OpMode {
          * It must be in the main loop() method.
          */
         driverOp.readButtons();
+        scorerOp.readButtons();
 
         //handling the driving:
         updateDrive();
+        //handling the arm:
+        updateArm();
     }
 }
