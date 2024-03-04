@@ -7,6 +7,7 @@ import com.arcrobotics.ftclib.drivebase.DifferentialDrive;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 import com.arcrobotics.ftclib.hardware.ServoEx;
+import com.arcrobotics.ftclib.hardware.SimpleServo;
 import com.arcrobotics.ftclib.hardware.motors.Motor;
 import com.arcrobotics.ftclib.hardware.motors.MotorGroup;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
@@ -81,7 +82,7 @@ public class TeleOpMain extends OpMode {
     private final int DRIVE_MOTOR_RPM = 6000 / DRIVE_MOTOR_RATIO;
 
     /*
-    Motors that are used to rotate the arm:
+     * Motors that are used to rotate the arm:
      */
     private Motor armMotorLeft;
     private Motor armMotorRight;
@@ -102,14 +103,14 @@ public class TeleOpMain extends OpMode {
     private GamepadEx scorerOp;
 
     /*
-    These are 2 encoder positions for our arm to rotate to.
-    The former is the position when arm is low near the ground (and we assume it's our starting position)
-    The latter is the position of arm when we score the pixels on the backdrop.
+     * These are 2 encoder positions for our arm to rotate to.
+     * The former is the position when arm is low near the ground (and we assume it's our starting position)
+     * The latter is the position of arm when we score the pixels on the backdrop.
 
-    IMPORTANT:
-    How to get these positions?
+     * IMPORTANT:
+     * How to get these positions?
 
-    goto ArmPositionTestOpMode for explanation
+     * goto ArmPositionTestOpMode for explanation
      */
     private final int ARM_POSITION_LOW = 0;
     private final int ARM_POSITION_SCORE = 0;
@@ -131,6 +132,8 @@ public class TeleOpMain extends OpMode {
     private ServoEx leftServo;
     private ServoEx rightServo;
 
+    private boolean isClawOpened = false;
+
     @Override
     public void init() {
         telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
@@ -141,9 +144,9 @@ public class TeleOpMain extends OpMode {
 
 
         /*
-        IMPORTANT!!!!
-         IN THE SECOND ARGUMENT IN new Motor(...) (id) PUT IN THE ID YOU HAVE IN YOUR CONFIGURATION FROM DRIVER HUB FOR THOSE MOTORS
-         please don't mess it up
+         * IMPORTANT!!!!
+         * IN THE SECOND ARGUMENT IN new Motor(...) (id) PUT IN THE ID YOU HAVE IN YOUR CONFIGURATION FROM DRIVER HUB FOR THOSE MOTORS
+         * please don't mess it up
          */
         leftMotor = new Motor(hardwareMap, "leftMotor", DRIVE_MOTOR_CPR, DRIVE_MOTOR_RPM);
         rightMotor = new Motor(hardwareMap, "rightMotor", DRIVE_MOTOR_CPR, DRIVE_MOTOR_RPM);
@@ -153,14 +156,14 @@ public class TeleOpMain extends OpMode {
         MotorGroup armMotors = new MotorGroup(armMotorLeft, armMotorRight);
         armMotors.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
         /*
-        Raw power means no internal controller does any work and the power supplied we will
-        calculate ourselves further in the code, depending on the desired position.
+        * Raw power means no internal controller does any work and the power supplied we will
+        * calculate ourselves further in the code, depending on the desired position.
          */
         armMotors.setRunMode(Motor.RunMode.RawPower);
 
         /*
-        because the default motor rotation (on the left side) is forward, the default rotation direction on the right side is backwards.
-        to account for that we invert the right motor so it's default rotation direction would be forward.
+        *  because the default motor rotation (on the left side) is forward, the default rotation direction on the right side is backwards.
+        * to account for that we invert the right motor so it's default rotation direction would be forward.
          */
         rightMotor.setInverted(true);
         armMotorRight.setInverted(true);
@@ -169,9 +172,9 @@ public class TeleOpMain extends OpMode {
         // here i simply group two motors into one MotorGroup (from FTCLib) so i could handle them both at once in following two methods:
         MotorGroup driveMotors = new MotorGroup(leftMotor, rightMotor);
         /*
-        Velocity control run mode is where the speed of rotation of motors is handled by the inner motor controller.
-        As you use drive encoders, this would make the programming process MUCH easier because you would not need to account for any
-        wacky things with motors' speeds' you could've encountered if you didn't use them
+        * Velocity control run mode is where the speed of rotation of motors is handled by the inner motor controller.
+        * As you use drive encoders, this would make the programming process MUCH easier because you would not need to account for any
+        * wacky things with motors' speeds' you could've encountered if you didn't use them
          */
         driveMotors.setRunMode(Motor.RunMode.VelocityControl);
         /*
@@ -199,6 +202,10 @@ public class TeleOpMain extends OpMode {
         armPIDLeft.setPID(armP, armI, armD);
         armPIDRight.setPID(armP, armI, armD);
 
+        //
+        leftServo = new SimpleServo(hardwareMap, "leftServo", -135, 135);
+        rightServo = new SimpleServo(hardwareMap, "rightServo", -135, 135);
+        rightServo.setInverted(true);
     }
 
 
@@ -256,8 +263,18 @@ public class TeleOpMain extends OpMode {
         armMotorRight.set(rightPower);
     }
 
-    private void updateClaw(){
+    private void updateClaw() {
         //TODO: finish this part
+        if(scorerOp.wasJustPressed(GamepadKeys.Button.A))
+            isClawOpened = !isClawOpened;
+
+        if(isClawOpened){
+            leftServo.setPosition(0.3);
+            rightServo.setPosition(0.3);
+        }else{
+            leftServo.setPosition(0.51);
+            rightServo.setPosition(0.51);
+        }
     }
 
     @Override
