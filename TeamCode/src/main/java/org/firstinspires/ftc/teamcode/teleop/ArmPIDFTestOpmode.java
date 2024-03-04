@@ -155,8 +155,8 @@ public class ArmPIDFTestOpmode extends LinearOpMode {
         armMotorRight.setInverted(true);
         MotorGroup armMotors = new MotorGroup(armMotorLeft, armMotorRight);
 
-        Motor.Encoder leftEncoder = armMotorLeft.encoder;
-        leftEncoder = armMotorRight.encoder;
+//        Motor.Encoder leftEncoder = armMotorLeft.encoder;
+//        leftEncoder = armMotorRight.encoder;
 
 
 //        armMotors.setZeroPowerBehavior(Motor.ZeroPowerBehavior.FLOAT);
